@@ -1,0 +1,11 @@
+# Saída da compilação (o .exe vai para as Releases do GitHub, não para o repositório)
+dist/
+_teste/
+*.pdb
+
+# Arquivos de sistema e editores
+Thumbs.db
+Desktop.ini
+.vs/
+.vscode/
+.idea/

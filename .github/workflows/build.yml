@@ -1,0 +1,53 @@
+# Compila o TurboFPS a cada push e, quando uma tag "v*" é enviada (ex.: v1.0.0),
+# publica o .exe numa Release do GitHub. Assim qualquer pessoa vê que o .exe veio deste código.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilar
+        shell: powershell
+        run: ./build.ps1
+
+      - name: Autoteste (somente leitura)
+        shell: powershell
+        run: |
+          $p = Start-Process -FilePath dist\TurboFPS.exe -ArgumentList '--selftest', "$PWD\selftest.txt" -Wait -PassThru
+          Get-Content selftest.txt -Encoding UTF8
+          if ($p.ExitCode -ne 0) { throw "Autoteste encontrou $($p.ExitCode) erro(s)." }
+
+      - name: SHA-256
+        shell: powershell
+        run: |
+          $h = (Get-FileHash dist\TurboFPS.exe -Algorithm SHA256).Hash
+          "$h  TurboFPS.exe" | Out-File dist\TurboFPS.exe.sha256 -Encoding ascii
+          Write-Host $h
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TurboFPS
+          path: |
+            dist/TurboFPS.exe
+            dist/TurboFPS.exe.sha256
+
+      - name: Publicar Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/TurboFPS.exe
+            dist/TurboFPS.exe.sha256
+          generate_release_notes: true
